@@ -31,6 +31,7 @@
 #include "jfr/recorder/service/jfrOptionSet.hpp"
 #include "jfr/recorder/repository/jfrRepository.hpp"
 #include "jfr/support/jfrThreadLocal.hpp"
+#include "gc/shared/allocTracer.hpp"
 #include "runtime/java.hpp"
 #include "runtime/thread.hpp"
 
@@ -50,6 +51,7 @@ void Jfr::on_create_vm_1() {
   if (!JfrRecorder::on_create_vm_1()) {
     vm_exit_during_initialization("Failure when starting JFR on_create_vm_1");
   }
+  AllocTracer::initialize_jfr_sampler(JfrOptionSet::alloc_samples_max_per_minute());
 }
 
 void Jfr::on_create_vm_2() {

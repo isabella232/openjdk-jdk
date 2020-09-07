@@ -26,44 +26,30 @@
 #ifndef SHARE_RUNTIME_THREADHEAPSAMPLER_HPP
 #define SHARE_RUNTIME_THREADHEAPSAMPLER_HPP
 
+#include "gc/shared/allocTracer.hpp"
 #include "memory/allocation.hpp"
+#include "runtime/samplerSupport.hpp"
 
 class ThreadHeapSampler {
  private:
-  // Statics for the fast log
-  static const int FastLogNumBits = 10;
-  static const int FastLogMask = (1 << FastLogNumBits) - 1;
+  static volatile int _sampling_interval;
+  
+  SamplerSupport _sampler_support;
 
   size_t _bytes_until_sample;
-  // Cheap random number generator
-  static uint64_t _rnd;
-  static bool _log_table_initialized;
 
-  static double _log_table[1<<FastLogNumBits];  // Constant
-  static volatile int _sampling_interval;
-
-  void pick_next_geometric_sample();
   void pick_next_sample(size_t overflowed_bytes = 0);
-
-  static double fast_log2(const double& d);
-  static bool init_log_table();
-  uint64_t next_random(uint64_t rnd);
 
  public:
   ThreadHeapSampler() {
-    _rnd = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(this));
-    if (_rnd == 0) {
-      _rnd = 1;
-    }
-
-    // Call this after _rnd is initialized to initialize _bytes_until_sample.
+    // Call this after _sampler_support is initialized to initialize _bytes_until_sample.
     pick_next_sample();
   }
 
   size_t bytes_until_sample()                    { return _bytes_until_sample;   }
   void set_bytes_until_sample(size_t bytes)      { _bytes_until_sample = bytes;  }
 
-  void check_for_sampling(oop obj, size_t size_in_bytes, size_t bytes_allocated_before);
+  bool check_for_sampling(oop obj, size_t size_in_bytes, size_t bytes_allocated_before);
 
   static void set_sampling_interval(int sampling_interval);
   static int get_sampling_interval();

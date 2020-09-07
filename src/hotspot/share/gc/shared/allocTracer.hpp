@@ -30,9 +30,11 @@
 
 class AllocTracer : AllStatic {
   public:
-    static void send_allocation_outside_tlab(Klass* klass, HeapWord* obj, size_t alloc_size, Thread* thread);
-    static void send_allocation_in_new_tlab(Klass* klass, HeapWord* obj, size_t tlab_size, size_t alloc_size, Thread* thread);
-    static void send_allocation_requiring_gc_event(size_t size, uint gcId);
+  static void send_allocation_outside_tlab(Klass* klass, HeapWord* obj, size_t alloc_size, Thread* thread);
+  static void send_allocation_in_new_tlab(Klass* klass, HeapWord* obj, size_t tlab_size, size_t alloc_size, Thread* thread);
+  static void send_allocation_requiring_gc_event(size_t size, uint gcId);
+
+  static void initialize_jfr_sampler(jlong target_samples_per_minute);
 };
 
 #endif // SHARE_GC_SHARED_ALLOCTRACER_HPP

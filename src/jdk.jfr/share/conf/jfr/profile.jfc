@@ -614,6 +614,10 @@
       <setting name="stackTrace">true</setting>
     </event>
 
+    <event name="jdk.ObjectAllocationSample">
+      <setting name="enabled" control="memory-profiling-enabled-medium">true</setting>
+    </event>
+
     <event name="jdk.NativeLibrary">
       <setting name="enabled">true</setting>
       <setting name="period">everyChunk</setting>

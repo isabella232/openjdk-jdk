@@ -44,6 +44,7 @@ class JfrOptionSet : public AllStatic {
   static jlong _memory_size;
   static jlong _num_global_buffers;
   static jlong _old_object_queue_size;
+  static jlong _alloc_samples_max_per_minute;
   static u4 _stack_depth;
   static jboolean _sample_threads;
   static jboolean _retransform;
@@ -66,6 +67,8 @@ class JfrOptionSet : public AllStatic {
   static void set_num_global_buffers(jlong value);
   static jint old_object_queue_size();
   static void set_old_object_queue_size(jlong value);
+  static jlong alloc_samples_max_per_minute();
+  static void set_alloc_samples_max_per_minute(jlong value);
   static u4 stackdepth();
   static void set_stackdepth(u4 depth);
   static bool sample_threads();
@@ -77,6 +80,7 @@ class JfrOptionSet : public AllStatic {
   static bool allow_event_retransforms();
   static bool sample_protection();
   DEBUG_ONLY(static void set_sample_protection(jboolean protection);)
+  static bool sample_allocations();
 
   static bool parse_flight_recorder_option(const JavaVMOption** option, char* delimiter);
   static bool parse_start_flight_recording_option(const JavaVMOption** option, char* delimiter);

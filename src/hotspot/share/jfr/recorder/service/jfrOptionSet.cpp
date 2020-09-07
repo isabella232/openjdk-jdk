@@ -104,6 +104,14 @@ void JfrOptionSet::set_old_object_queue_size(jlong value) {
   _old_object_queue_size = value;
 }
 
+jlong JfrOptionSet::alloc_samples_max_per_minute() {
+  return _alloc_samples_max_per_minute;
+}
+
+void JfrOptionSet::set_alloc_samples_max_per_minute(jlong value) {
+  _alloc_samples_max_per_minute = value;
+}
+
 u4 JfrOptionSet::stackdepth() {
   return _stack_depth;
 }
@@ -305,6 +313,7 @@ jlong JfrOptionSet::_thread_buffer_size = 0;
 jlong JfrOptionSet::_memory_size = 0;
 jlong JfrOptionSet::_num_global_buffers = 0;
 jlong JfrOptionSet::_old_object_queue_size = 0;
+jlong JfrOptionSet::_alloc_samples_max_per_minute = ALLOC_SAMPLES_MAX_PER_MINUTE_DEFAULT;
 u4 JfrOptionSet::_stack_depth = STACK_DEPTH_DEFAULT;
 jboolean JfrOptionSet::_sample_threads = JNI_TRUE;
 jboolean JfrOptionSet::_retransform = JNI_TRUE;
