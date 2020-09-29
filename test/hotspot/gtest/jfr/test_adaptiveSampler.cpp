@@ -85,9 +85,9 @@ protected:
   const int min_events_per_window = 2;
   const int window_count = 10000;
   const clock_t window_duration_ms = 100;
-  const size_t expected_samples_per_window = 50;
-  const size_t expected_samples = expected_samples_per_window * (size_t)window_count;
-  const double max_sample_bias = 0.10;
+  const size_t expected_hits_per_window = 50;
+  const size_t expected_hits = expected_hits_per_window * (size_t)window_count;
+  const double max_sample_bias = 0.11;
 
   void SetUp() {
     // Ensure that tests are separated in time by spreading them by 24hrs apart
@@ -97,16 +97,51 @@ protected:
   void TearDown() {
     // nothing
   }
+
+  void assertDistributionProperties(int distr_slots, jlong* events, jlong* hits, size_t all_events, size_t all_hits, const char* msg) {
+    size_t events_sum = 0;
+    size_t hits_sum = 0;
+    for (int i = 0; i < distr_slots; i++) {
+      events_sum += i * events[i];
+      hits_sum += i * hits[i];
+    }
+
+    double events_mean = events_sum / (double)all_events;
+    double hits_mean = hits_sum / (double)all_hits;
+
+    double events_variance = 0;
+    double hits_variance = 0;
+    for (int i = 0; i < distr_slots; i++) {
+      double events_diff = i - events_mean;
+      events_variance = events[i] * events_diff * events_diff;
+
+      double hits_diff = i - hits_mean;
+      hits_variance = hits[i] * hits_diff * hits_diff;
+    }
+    events_variance = events_variance / (all_events - 1);
+    hits_variance = hits_variance / (all_hits - 1);
+    double events_stdev = sqrt(events_variance);
+    double hits_stdev = sqrt(hits_variance);
+
+    // fprintf(stdout, "=== em: %f, hm: %f, ev: %f, estdev: %f, hstdev: %f\n", events_mean, hits_mean, events_variance, events_stdev, hits_stdev);
+
+    // make sure the standard deviation is ok
+    EXPECT_NEAR(events_stdev, hits_stdev, 0.1) << msg;
+    // make sure that the subsampled set mean is within 2-sigma of the original set mean
+    EXPECT_NEAR(events_mean, hits_mean, events_stdev) <<  msg;
+    // make sure that the original set mean is withing 2-sigma of the subsampled set mean
+    EXPECT_NEAR(hits_mean, events_mean, hits_stdev) <<  msg;
+  }
 };
 
 TEST_VM_F(AdaptiveSampling, uniform_rate) {
   fprintf(stdout, "=== uniform\n");
   jlong events[100] = {0};
   jlong hits[100] = {0};
-  ::AdaptiveSampler* sampler = new ::AdaptiveSampler(window_duration_ms, expected_samples_per_window, 10, 25);
+  ::AdaptiveSampler* sampler = new ::AdaptiveSampler(window_duration_ms, expected_hits_per_window, 60, 160);
 
   size_t all_events = 0;
-  size_t all_samples = 0;
+  size_t all_hits = 0;
   for (int t = 0; t < window_count; t++) {
     size_t counter = 0;
     int incoming_events = os::random() % max_events_per_window + min_events_per_window;
@@ -119,29 +154,23 @@ TEST_VM_F(AdaptiveSampling, uniform_rate) {
         hits[hit_index] = hits[hit_index] + 1;
       }
     }
-    all_samples += counter;
+    all_hits += counter;
     MockJfrTime::tick += window_duration_ms * NANOSECS_PER_MILLISEC + 1;
   }
   delete sampler;
-  EXPECT_NEAR(expected_samples, all_samples, expected_samples * 0.25) << "Adaptive sampler: random uniform, all samples";
+  EXPECT_NEAR(expected_hits, all_hits, expected_hits * 0.25) << "Adaptive sampler: random uniform, all samples";
 
-  for (int i = 0; i < 100; i++) {
-    // fprintf(stderr, "hits[%d] = %lu\n", i, hits[i]);
-    double p1 = events[i] / (double)all_events;
-    double p2 = hits[i] / (double)all_samples;
-    EXPECT_NEAR(p1, p2, p1 * max_sample_bias) <<  "Adaptive sampler: random uniform, hit distribution";
-  }
-
+  assertDistributionProperties(100, events, hits, all_events, all_hits, "Adaptive sampler: random uniform, hit distribution");
 }
 
 TEST_VM_F(AdaptiveSampling, bursty_rate_10p) {
   fprintf(stdout, "=== bursty 10\n");
   jlong events[100] = {0};
   jlong hits[100] = {0};
-  ::AdaptiveSampler* sampler = new ::AdaptiveSampler(window_duration_ms, expected_samples_per_window, 10, 25);
+  ::AdaptiveSampler* sampler = new ::AdaptiveSampler(window_duration_ms, expected_hits_per_window, 60, 160);
 
   size_t all_events = 0;
-  size_t all_samples = 0;
+  size_t all_hits = 0;
   for (int t = 0; t < window_count; t++) {
     size_t counter = 0;
     bool is_burst = (os::random() % 100) < 10; // 10% burst chance
@@ -155,28 +184,23 @@ TEST_VM_F(AdaptiveSampling, bursty_rate_10p) {
         hits[hit_index] = hits[hit_index] + 1;
       }
     }
-    all_samples += counter;
+    all_hits += counter;
     MockJfrTime::tick += window_duration_ms * NANOSECS_PER_MILLISEC + 1;
   }
   delete sampler;
-  EXPECT_NEAR(expected_samples, all_samples, expected_samples * 0.25) << "Adaptive sampler: bursty 10%";
+  EXPECT_NEAR(expected_hits, all_hits, expected_hits * 0.25) << "Adaptive sampler: bursty 10%";
 
-  for (int i = 0; i < 100; i++) {
-    // fprintf(stderr, "hits[%d] = %lu\n", i, hits[i]);
-    double p1 = events[i] / (double)all_events;
-    double p2 = hits[i] / (double)all_samples;
-    EXPECT_NEAR(p1, p2, p1 * max_sample_bias) <<  "Adaptive sampler: bursty 10%, hit distribution";
-  }
+  assertDistributionProperties(100, events, hits, all_events, all_hits, "Adaptive sampler: bursty 10%, hit distribution");
 }
 
 TEST_VM_F(AdaptiveSampling, bursty_rate_90p) {
   fprintf(stdout, "=== bursty 90\n");
   jlong events[100] = {0};
   jlong hits[100] = {0};
-  ::AdaptiveSampler* sampler = new ::AdaptiveSampler(window_duration_ms, expected_samples_per_window, 10, 25);
+  ::AdaptiveSampler* sampler = new ::AdaptiveSampler(window_duration_ms, expected_hits_per_window, 60, 160);
 
   size_t all_events = 0;
-  size_t all_samples = 0;
+  size_t all_hits = 0;
   for (int t = 0; t < window_count; t++) {
     size_t counter = 0;
     bool is_burst = (os::random() % 100) < 90; // 90% burst chance
@@ -190,29 +214,23 @@ TEST_VM_F(AdaptiveSampling, bursty_rate_90p) {
         hits[hit_index] = hits[hit_index] + 1;
       }
     }
-    all_samples += counter;
+    all_hits += counter;
     MockJfrTime::tick += window_duration_ms * NANOSECS_PER_MILLISEC + 1;
   }
   delete sampler;
-  EXPECT_NEAR(expected_samples, all_samples, expected_samples * max_sample_bias) << "Adaptive sampler: bursty 90%";
+  EXPECT_NEAR(expected_hits, all_hits, expected_hits * max_sample_bias) << "Adaptive sampler: bursty 90%";
 
-  size_t expected_hits = std::min((window_count * expected_samples_per_window), all_samples) / 100;
-  for (int i = 0; i < 100; i++) {
-    // fprintf(stderr, "hits[%d] = %lu\n", i, hits[i]);
-    double p1 = events[i] / (double)all_events;
-    double p2 = hits[i] / (double)all_samples;
-    EXPECT_NEAR(p1, p2, p1 * max_sample_bias) <<  "Adaptive sampler: bursty 90%, hit distribution";
-  }
+  assertDistributionProperties(100, events, hits, all_events, all_hits, "Adaptive sampler: bursty 90%, hit distribution");
 }
 
 TEST_VM_F(AdaptiveSampling, low_rate) {
   fprintf(stdout, "=== low\n");
   jlong events[100] = {0};
   jlong hits[100] = {0};
-  ::AdaptiveSampler* sampler = new ::AdaptiveSampler(window_duration_ms, expected_samples_per_window, 10, 25);
+  ::AdaptiveSampler* sampler = new ::AdaptiveSampler(window_duration_ms, expected_hits_per_window, 60, 160);
 
   size_t all_events = 0;
-  size_t all_samples = 0;
+  size_t all_hits = 0;
   for (int t = 0; t < window_count; t++) {
     size_t counter = 0;
     for (int i = 0; i < min_events_per_window; i++) {
@@ -224,29 +242,24 @@ TEST_VM_F(AdaptiveSampling, low_rate) {
         hits[hit_index] = hits[hit_index] + 1;
       }
     }
-    all_samples += counter;
+    all_hits += counter;
     MockJfrTime::tick += window_duration_ms * NANOSECS_PER_MILLISEC + 1;
   }
   delete sampler;
   size_t target_samples = min_events_per_window * window_count;
-  EXPECT_NEAR(target_samples, all_samples, expected_samples * 0.01) << "Adaptive sampler: below target";
+  EXPECT_NEAR(target_samples, all_hits, expected_hits * 0.01) << "Adaptive sampler: below target";
 
-  for (int i = 0; i < 100; i++) {
-    // fprintf(stderr, "hits[%d] = %lu\n", i, hits[i]);
-    double p1 = events[i] / (double)all_events;
-    double p2 = hits[i] / (double)all_samples;
-    EXPECT_NEAR(p1, p2, p1 * max_sample_bias) << "Adaptive sampler: below target, hit distribution";
-  }
+  assertDistributionProperties(100, events, hits, all_events, all_hits, "Adaptive sampler: below target, hit distribution");
 }
 
 TEST_VM_F(AdaptiveSampling, high_rate) {
   fprintf(stdout, "=== high\n");
   jlong events[100] = {0};
   jlong hits[100] = {0};
-  ::AdaptiveSampler* sampler = new ::AdaptiveSampler(window_duration_ms, expected_samples_per_window, 10, 25);
+  ::AdaptiveSampler* sampler = new ::AdaptiveSampler(window_duration_ms, expected_hits_per_window, 60, 160);
 
   size_t all_events = 0;
-  size_t all_samples = 0;
+  size_t all_hits = 0;
   for (int t = 0; t < window_count; t++) {
     size_t counter = 0;
     for (int i = 0; i < max_events_per_window; i++) {
@@ -258,16 +271,11 @@ TEST_VM_F(AdaptiveSampling, high_rate) {
         hits[hit_index] = hits[hit_index] + 1;
       }
     }
-    all_samples += counter;
+    all_hits += counter;
     MockJfrTime::tick += window_duration_ms * NANOSECS_PER_MILLISEC + 1;
   }
   delete sampler;
-  EXPECT_NEAR(expected_samples, all_samples, expected_samples * 0.05) << "Adaptive sampler: above target";
+  EXPECT_NEAR(expected_hits, all_hits, expected_hits * 0.05) << "Adaptive sampler: above target";
 
-  for (int i = 0; i < 100; i++) {
-    // fprintf(stderr, "hits[%d] = %lu\n", i, hits[i]);
-    double p1 = events[i] / (double)all_events;
-    double p2 = hits[i] / (double)all_samples;
-    EXPECT_NEAR(p1, p2, p1 * max_sample_bias) <<  "Adaptive sampler: above target, hit distribution";
-  }
+  assertDistributionProperties(100, events, hits, all_events, all_hits, "Adaptive sampler: above target, hit distribution");
 }
