@@ -59,10 +59,6 @@ namespace {
   }
 }
 
-// AdaptiveSampler* AllocTracer::_jfr_sampler = NULL;
-// size_t THREAD_LOCAL AllocTracer::_skipped_allocations = 0;
-// size_t THREAD_LOCAL AllocTracer::_skipped_samples = 0;
-
 void AllocTracer::initialize_jfr_sampler(jlong target_samples_per_minute) {
   // use heuristic(?) to set the window duration based on the requested sample rate
   // 20ms window for >10k samples per minute; 50ms window for 1k-10k samples per minute; 500ms window for <1k samples per minute
@@ -88,25 +84,6 @@ void AllocTracer::send_allocation_outside_tlab(Klass* klass, HeapWord* obj, size
   }
   send_allocation_sample(klass, obj, 0, alloc_size, thread);
 }
-
-// void AllocTracer::send_allocation_sample(Klass* klass, HeapWord* obj, size_t tlab_size, size_t alloc_size, Thread* thread) {
-//   EventObjectAllocationSample event;
-//   if (event.should_commit()) {
-//     event.set_objectClass(klass);
-//     event.set_allocationSize(alloc_size);
-//     AdaptiveSampler* sampler = Atomic::load(&_jfr_sampler);
-//     if (sampler != NULL && sampler->should_sample()) {
-//       event.set_allocatedSinceLast(_skipped_allocations + tlab_size + alloc_size);
-//       event.set_foldedSamples(_skipped_samples + 1);
-//       event.commit();
-//       _skipped_allocations = 0;
-//       _skipped_samples = 0;
-//     } else {
-//       _skipped_samples++;
-//       _skipped_allocations += (tlab_size + alloc_size);
-//     }
-//   }
-// }
 
 void AllocTracer::send_allocation_in_new_tlab(Klass* klass, HeapWord* obj, size_t tlab_size, size_t alloc_size, Thread* thread) {
   JFR_ONLY(JfrAllocationTracer tracer(obj, alloc_size, thread);)

@@ -44,18 +44,16 @@ void ThreadHeapSampler::pick_next_sample(size_t overflowed_bytes) {
   _bytes_until_sample = _sampler_support.pick_next_geometric_sample(interval);
 }
 
-bool ThreadHeapSampler::check_for_sampling(oop obj, size_t allocation_size, size_t bytes_since_allocation) {
+void ThreadHeapSampler::check_for_sampling(oop obj, size_t allocation_size, size_t bytes_since_allocation) {
   size_t total_allocated_bytes = bytes_since_allocation + allocation_size;
 
   // If not yet time for a sample, skip it.
   if (total_allocated_bytes < _bytes_until_sample) {
     _bytes_until_sample -= total_allocated_bytes;
-    return false;
   }
 
   size_t overflow_bytes = total_allocated_bytes - _bytes_until_sample;
   pick_next_sample(overflow_bytes);
-  return true;
 }
 
 int ThreadHeapSampler::get_sampling_interval() {
