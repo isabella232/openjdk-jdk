@@ -693,10 +693,10 @@ jobs:
     needs:
       - prerequisites
       - linux_additional_build
-      - linux_x64_test
-      - linux_x86_test
-      - windows_x64_test
-      - macos_x64_test
+      - linux_x64_build
+      - linux_x86_build
+      - windows_x64_build
+      - macos_x64_build
 
     steps:
       - name: Determine current artifacts endpoint
