@@ -696,7 +696,6 @@ jobs:
       - linux_x64_build
       - linux_x86_build
       - windows_x64_build
-      - macos_x64_build
 
     steps:
       - name: Determine current artifacts endpoint
@@ -723,11 +722,10 @@ jobs:
           -X DELETE "${url}";
           done
 
-      - name: Fetch remaining artifacts (test results)
+      - name: Fetch remaining artifacts (binaries)
         uses: actions/download-artifact@v2
         with:
-          path: test-results
-
+          path: binaries
       - name: Delete remaining artifacts
         run: >
           for url in `
@@ -743,5 +741,5 @@ jobs:
       - name: Upload a combined test results artifact
         uses: actions/upload-artifact@v2
         with:
-          name: test-results_${{ needs.prerequisites.outputs.bundle_id }}
-          path: test-results
+          name: binaries_${{ needs.prerequisites.outputs.bundle_id }}
+          path: binaries/
