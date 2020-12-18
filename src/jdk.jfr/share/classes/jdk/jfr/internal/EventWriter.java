@@ -154,6 +154,11 @@ public final class EventWriter {
         putLong(threadID);
     }
 
+    public void putEventThread(Thread athread) {
+        long tid = jvm.getThreadId(athread);
+        putLong(tid);
+    }
+
     public void putThread(Thread athread) {
         if (athread == null) {
             putLong(0L);
@@ -173,6 +178,14 @@ public final class EventWriter {
     public void putStackTrace() {
         if (eventType.getStackTraceEnabled()) {
             putLong(jvm.getStackTraceId(eventType.getStackTraceOffset()));
+        } else {
+            putLong(0L);
+        }
+    }
+
+    public void putStackTrace(Thread athread) {
+        if (eventType.getStackTraceEnabled()) {
+            putLong(jvm.getStackTraceId(jvm.getThreadId(athread), eventType.getStackTraceOffset()));
         } else {
             putLong(0L);
         }
@@ -294,6 +307,7 @@ public final class EventWriter {
     }
 
     private EventWriter(long startPos, long maxPos, long startPosAddress, long threadID, boolean valid) {
+        try {
         startPosition = currentPosition = startPos;
         maxPosition = maxPos;
         startPositionAddress = startPosAddress;
@@ -302,6 +316,10 @@ public final class EventWriter {
         flushOnEnd = false;
         this.valid = valid;
         notified = false;
+        } catch (Throwable t) {
+            t.printStackTrace();
+            throw t;
+        }
     }
 
     private static int makePaddedInt(int v) {

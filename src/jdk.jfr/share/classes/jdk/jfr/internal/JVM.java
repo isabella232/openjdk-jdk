@@ -162,6 +162,8 @@ public final class JVM {
      */
     public native long getStackTraceId(int skipCount);
 
+    public native long getStackTraceId(long tid, int skipCount);
+
     /**
      * Return identifier for thread
      *
